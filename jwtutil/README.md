@@ -1,14 +1,21 @@
-# JWTUtil - Go JWT工具包
+# JWTUtil - Go JWT工具包 v1.2
 
-简单易用的JWT工具包，支持生成、解析和刷新Token。
+企业级JWT解决方案，支持：
+- 多密钥自动轮换
+- Token验证缓存
+- 多种签名算法(HS256/HS384/HS512/RS256/RS384/RS512)
+- 高性能Token处理
 
 ## 功能特性
 
 - 支持自定义Claims
-- 多种签名算法可选(HS256/HS384/HS512等)
+- 多种签名算法可选(HS256/HS384/HS512/RS256/RS384/RS512)
 - Token自动刷新
 - 详细的错误处理
 - 灵活的配置选项
+- 多密钥自动轮换支持
+- Token验证缓存(默认关闭)
+- 高性能Token处理
 
 ## 安装
 
@@ -60,19 +67,28 @@ j := jwtutil.New(
     jwtutil.WithExpiresIn(2*time.Hour),
     jwtutil.WithIssuer("your-app"),
     jwtutil.WithValidateClaims(myValidateFunc),
+    
+    // v1.2 新功能
+    jwtutil.WithMultiSecrets([][]byte{
+        []byte("old-secret-1"),
+        []byte("old-secret-2"),
+    }),
+    jwtutil.WithCache(true), // 启用缓存
 )
 ```
 
 ### 可用选项列表
 
-| 配置函数 | 说明 | 是否必须 | 默认值 |
-|----------|------|----------|--------|
-| WithSecret | 设置签名密钥 | 是 | 无 |
-| WithSigningMethod | 设置签名算法 | 否 | HS256 |
-| WithExpiresIn | 设置Token默认有效期 | 否 | 2小时 |
-| WithIssuer | 设置签发者标识 | 否 | 空 |
-| WithIssuedAt | 是否自动设置签发时间 | 否 | true |
-| WithValidateClaims | 设置Claims验证回调 | 否 | 无 |
+| 配置函数 | 说明 | 是否必须 | 默认值 | 版本 |
+|----------|------|----------|--------|------|
+| WithSecret | 设置签名密钥 | 是 | 无 | v1.0 |
+| WithSigningMethod | 设置签名算法 | 否 | HS256 | v1.0 |
+| WithExpiresIn | 设置Token默认有效期 | 否 | 2小时 | v1.0 |
+| WithIssuer | 设置签发者标识 | 否 | 空 | v1.0 |
+| WithIssuedAt | 是否自动设置签发时间 | 否 | true | v1.0 |
+| WithValidateClaims | 设置Claims验证回调 | 否 | 无 | v1.0 |
+| WithMultiSecrets | 设置多密钥支持 | 否 | 无 | v1.2 |
+| WithCache | 启用Token验证缓存 | 否 | false | v1.2 |
 
 ## Claims验证示例
 

@@ -1,6 +1,7 @@
 package jwtutil
 
 import (
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -37,18 +38,59 @@ func (j *JWTUtil) GenerateToken(claims jwt.Claims) (string, error) {
 	return token.SignedString(j.options.secret)
 }
 
+var (
+	tokenCache = &sync.Map{}
+)
+
 // ParseToken 解析并验证Token
 func (j *JWTUtil) ParseToken(tokenString string, claims jwt.Claims) error {
-	if len(j.options.secret) == 0 {
-		return ErrMissingKey
+	// 检查缓存
+	if j.options.enableCache {
+		if cached, ok := tokenCache.Load(tokenString); ok {
+			if err, ok := cached.(error); ok {
+				return err
+			}
+			return nil
+		}
 	}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	// 多密钥验证
+	verifyFn := func(token *jwt.Token) (interface{}, error) {
 		if token.Method != j.options.signingMethod {
 			return nil, ErrInvalidSigningMethod
 		}
-		return j.options.secret, nil
-	})
+
+		// 尝试所有密钥
+		secrets := append([][]byte{j.options.secret}, j.options.secrets...)
+		var lastErr error
+		for _, secret := range secrets {
+			if len(secret) == 0 {
+				continue
+			}
+			// 直接使用签名字符串验证
+			signingString := token.Raw[:len(token.Raw)-len(token.Signature)-1]
+			if err := token.Method.Verify(signingString, token.Signature, secret); err == nil {
+				return secret, nil
+			} else {
+				lastErr = err
+			}
+		}
+		if lastErr != nil {
+			return nil, lastErr
+		}
+		return nil, ErrMissingKey
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, verifyFn)
+
+	// 缓存结果
+	if j.options.enableCache {
+		if err == nil {
+			tokenCache.Store(tokenString, true)
+		} else {
+			tokenCache.Store(tokenString, err)
+		}
+	}
 
 	if err != nil {
 		switch err {

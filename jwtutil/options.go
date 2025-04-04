@@ -9,11 +9,13 @@ import (
 // Options JWT配置选项
 type Options struct {
 	secret         []byte
+	secrets        [][]byte // 多密钥支持
 	signingMethod  jwt.SigningMethod
 	expiresIn      time.Duration
 	issuer         string
 	issuedAt       bool
-	validateClaims func(claims jwt.Claims) error // Claims验证回调
+	validateClaims func(claims jwt.Claims) error
+	enableCache    bool // 是否启用缓存
 }
 
 // Option 配置函数类型

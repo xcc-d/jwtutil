@@ -39,12 +39,28 @@ func (j *JWTUtil) GenerateToken(claims jwt.Claims) (string, error) {
 
 // ParseToken 解析并验证Token
 func (j *JWTUtil) ParseToken(tokenString string, claims jwt.Claims) error {
+	if len(j.options.secret) == 0 {
+		return ErrMissingKey
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if token.Method != j.options.signingMethod {
+			return nil, ErrInvalidSigningMethod
+		}
 		return j.options.secret, nil
 	})
 
 	if err != nil {
-		return err
+		switch err {
+		case jwt.ErrTokenMalformed:
+			return ErrTokenMalformed
+		case jwt.ErrTokenExpired:
+			return ErrTokenExpired
+		case jwt.ErrTokenNotValidYet:
+			return ErrInvalidToken
+		default:
+			return err
+		}
 	}
 
 	if !token.Valid {
@@ -60,7 +76,7 @@ func (j *JWTUtil) RefreshToken(tokenString string, claims jwt.Claims) (string, e
 		return "", err
 	}
 
-	// 重置签发时间和过期时间
+	// 重置签发时间和过期时间 1
 	if regClaims, ok := claims.(*jwt.RegisteredClaims); ok {
 		regClaims.IssuedAt = jwt.NewNumericDate(time.Now())
 		if j.options.expiresIn > 0 {

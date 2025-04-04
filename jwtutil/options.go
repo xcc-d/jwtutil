@@ -8,11 +8,12 @@ import (
 
 // Options JWT配置选项
 type Options struct {
-	secret        []byte
-	signingMethod jwt.SigningMethod
-	expiresIn     time.Duration
-	issuer        string
-	issuedAt      bool
+	secret         []byte
+	signingMethod  jwt.SigningMethod
+	expiresIn      time.Duration
+	issuer         string
+	issuedAt       bool
+	validateClaims func(claims jwt.Claims) error // Claims验证回调
 }
 
 // Option 配置函数类型
@@ -58,5 +59,12 @@ func WithIssuer(issuer string) Option {
 func WithIssuedAt(enable bool) Option {
 	return func(o *Options) {
 		o.issuedAt = enable
+	}
+}
+
+// WithValidateClaims 设置Claims验证回调
+func WithValidateClaims(validator func(claims jwt.Claims) error) Option {
+	return func(o *Options) {
+		o.validateClaims = validator
 	}
 }

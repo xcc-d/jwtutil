@@ -1,13 +1,14 @@
-# JWTUtil
+# JWTUtil - Go JWT工具包
 
-JWTUtil 是一个轻量级的 Go 语言 JWT 工具包，旨在简化 JWT 的配置和使用流程，加快小型项目的开发速度。
+简单易用的JWT工具包，支持生成、解析和刷新Token。
 
-## 特性
+## 功能特性
 
-- **简单易用**：简洁的 API 接口，只需几行代码即可完成 JWT 的生成和验证
-- **灵活配置**：使用函数选项模式，允许灵活配置 JWT 参数
-- **合理默认值**：提供默认配置，减少必要的配置项
-- **基于官方包**：基于广泛使用的 `github.com/golang-jwt/jwt/v5` 包构建
+- 支持自定义Claims
+- 多种签名算法可选(HS256/HS384/HS512等)
+- Token自动刷新
+- 详细的错误处理
+- 灵活的配置选项
 
 ## 安装
 
@@ -17,143 +18,90 @@ go get github.com/xcc-d/jwtutil
 
 ## 快速开始
 
-### 基本用法
-
-```go
-package main
-
-import (
-    "fmt"
-    "time"
-
-    "github.com/golang-jwt/jwt/v5"
-    "github.com/your-username/jwtutil"
-)
-
-func main() {
-    // 初始化 JWT 工具
-    jwtUtil := jwtutil.New(
-        jwtutil.WithSecret([]byte("your-secret-key")),
-    )
-
-    // 创建自定义 Claims
-    claims := &jwt.RegisteredClaims{
-        Subject:   "user-123",
-        ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
-    }
-
-    // 生成 Token
-    token, err := jwtUtil.GenerateToken(claims)
-    if err != nil {
-        fmt.Println("生成 Token 失败:", err)
-        return
-    }
-    fmt.Println("生成的 Token:", token)
-
-    // 解析 Token
-    parsedClaims := &jwt.RegisteredClaims{}
-    err = jwtUtil.ParseToken(token, parsedClaims)
-    if err != nil {
-        fmt.Println("解析 Token 失败:", err)
-        return
-    }
-    fmt.Println("Subject:", parsedClaims.Subject)
-
-    // 刷新 Token
-    newToken, err := jwtUtil.RefreshToken(token, parsedClaims)
-    if err != nil {
-        fmt.Println("刷新 Token 失败:", err)
-        return
-    }
-    fmt.Println("刷新后的 Token:", newToken)
-}
-```
-
-### 自定义 Claims
-
-```go
-package main
-
-import (
-    "fmt"
-    "time"
-
-    "github.com/golang-jwt/jwt/v5"
-    "github.com/xcc-d/jwtutil"
-)
-
-// UserClaims 自定义 Claims
-type UserClaims struct {
-    jwt.RegisteredClaims
-    UserID   string `json:"user_id"`
-    Username string `json:"username"`
-    Role     string `json:"role"`
-}
-
-func main() {
-    // 初始化 JWT 工具，自定义配置
-    jwtUtil := jwtutil.New(
-        jwtutil.WithSecret([]byte("your-secret-key")),
-        jwtutil.WithExpiresIn(24 * time.Hour),
-        jwtutil.WithIssuer("my-app"),
-    )
-
-    // 创建自定义 Claims
-    claims := &UserClaims{
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-        },
-        UserID:   "123456",
-        Username: "johndoe",
-        Role:     "admin",
-    }
-
-    // 生成 Token
-    token, err := jwtUtil.GenerateToken(claims)
-    if err != nil {
-        fmt.Println("生成 Token 失败:", err)
-        return
-    }
-
-    // 解析 Token
-    parsedClaims := &UserClaims{}
-    err = jwtUtil.ParseToken(token, parsedClaims)
-    if err != nil {
-        fmt.Println("解析 Token 失败:", err)
-        return
-    }
-    fmt.Println("用户名:", parsedClaims.Username)
-    fmt.Println("角色:", parsedClaims.Role)
-}
-```
-
-## 配置选项
-
-JWTUtil 提供了多种配置选项来自定义 JWT 的行为：
-
-| 选项 | 说明 | 默认值 |
-|------|------|--------|
-| WithSecret | 设置签名密钥（必需） | - |
-| WithSigningMethod | 设置签名算法 | HS256 |
-| WithExpiresIn | 设置过期时间 | 2小时 |
-| WithIssuer | 设置签发者 | 空字符串 |
-| WithIssuedAt | 是否设置签发时间 | true |
-
-## 错误处理
-
 ```go
 import "github.com/xcc-d/jwtutil"
 
-func handleToken(tokenString string) {
-    // ...
-    if err := jwtUtil.ParseToken(tokenString, claims); err != nil {
-        if err == jwtutil.ErrInvalidToken {
-            // 处理无效 Token
-            return
-        }
-        // 处理其他错误
-    }
-    // Token 有效
+// 初始化
+j := jwtutil.New(
+    jwtutil.WithSecret([]byte("your-secret-key")),
+    jwtutil.WithExpiresIn(2*time.Hour),
+    jwtutil.WithIssuer("your-app"),
+)
+
+// 自定义Claims
+type MyClaims struct {
+    UserID int64 `json:"user_id"`
+    jwt.RegisteredClaims
 }
+
+// 生成Token
+claims := &MyClaims{UserID: 123}
+token, err := j.GenerateToken(claims)
+
+// 解析Token
+parsedClaims := &MyClaims{}
+err = j.ParseToken(token, parsedClaims)
+
+// 刷新Token
+newToken, err := j.RefreshToken(token, parsedClaims)
 ```
 
+## 配置选项说明
+
+所有配置函数都在初始化时通过`New()`函数传入，按需使用：
+
+```go
+// 典型配置示例
+j := jwtutil.New(
+    // 必须设置的密钥
+    jwtutil.WithSecret([]byte("your-secret-key")),
+    
+    // 可选配置
+    jwtutil.WithExpiresIn(2*time.Hour),
+    jwtutil.WithIssuer("your-app"),
+    jwtutil.WithValidateClaims(myValidateFunc),
+)
+```
+
+### 可用选项列表
+
+| 配置函数 | 说明 | 是否必须 | 默认值 |
+|----------|------|----------|--------|
+| WithSecret | 设置签名密钥 | 是 | 无 |
+| WithSigningMethod | 设置签名算法 | 否 | HS256 |
+| WithExpiresIn | 设置Token默认有效期 | 否 | 2小时 |
+| WithIssuer | 设置签发者标识 | 否 | 空 |
+| WithIssuedAt | 是否自动设置签发时间 | 否 | true |
+| WithValidateClaims | 设置Claims验证回调 | 否 | 无 |
+
+## Claims验证示例
+
+```go
+j := jwtutil.New(
+    jwtutil.WithValidateClaims(func(claims jwt.Claims) error {
+        if c, ok := claims.(*MyClaims); ok {
+            if c.UserID <= 0 {
+                return errors.New("invalid user id")
+            }
+            if c.Role != "admin" {
+                return errors.New("permission denied")
+            }
+        }
+        return nil
+    })
+)
+```
+
+## 错误处理
+
+- `ErrInvalidToken`: Token无效
+- `ErrTokenExpired`: Token已过期  
+- `ErrInvalidSigningMethod`: 签名算法不匹配
+- `ErrMissingKey`: 缺少签名密钥
+- `ErrInvalidClaims`: Claims无效
+- `ErrTokenMalformed`: Token格式错误
+
+## 性能建议
+
+- 对于高并发场景，建议复用JWTUtil实例
+- 避免频繁创建新的Claims对象
